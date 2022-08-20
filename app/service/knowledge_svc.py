@@ -13,6 +13,7 @@ class KnowledgeService(KnowledgeServiceInterface, BaseService):
     def __init__(self):
         self.log = self.add_service('knowledge_svc', self)
         self.__loaded_knowledge_module = BaseKnowledgeService()
+        self.base_service = self.__loaded_knowledge_module
 
     @staticmethod
     def _load_module(module_type, module_info):
