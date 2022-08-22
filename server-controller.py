@@ -80,9 +80,10 @@ def run_tasks(services):
     loop.run_until_complete(start_server())
     try:
         logging.info('All systems ready.')
-        loop.run_forever()
+        # loop.run_forever()
     except KeyboardInterrupt:
         loop.run_until_complete(services.get('app_svc').teardown(main_config_file=args.environment))
+    return loop
 
 
 def init_swagger_documentation(app):
@@ -186,6 +187,7 @@ if __name__ == '__main__':
     if len(args.redispassword) > 0:
         os.environ['redis_password'] = args.redispassword
 
+    loop = run_tasks(services=app_svc.get_services())
     db_connect()
 
     adversary = Adversary(
@@ -205,17 +207,10 @@ if __name__ == '__main__':
         adversary=adversary,
         source=sc,
     )
-    links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
-        operation=op,
-    ))
-    # op.apply()
-    print(links)
-    # print(knowledge_svc.base_service.fact_ram)
-
     session = args.session
     host = args.host
     
-    loop = asyncio.new_event_loop()
+    new_loop = asyncio.new_event_loop()
     def serve_queue():
         print('serving queue...')
         while True:
@@ -224,7 +219,7 @@ if __name__ == '__main__':
                 if command:
                     timestamp, action, params = command
                     if action == 'info':
-                        links =  loop.run_until_complete(planning_svc.get_links(
+                        links =  new_loop.run_until_complete(planning_svc.get_links(
                             operation=op,
                         ))
                         results =  todict({
@@ -233,9 +228,9 @@ if __name__ == '__main__':
                             'agents': [a.schema.dump(a) for a in op.agents],
                         })
                     elif action == 'apply':
-                        link_ids = [loop.run_until_complete(
+                        link_ids = [new_loop.run_until_complete(
                             op.apply(l)) for l in params['links']]
-                        loop.run_until_complete(
+                        new_loop.run_until_complete(
                             op.wait_for_links_completion(link_ids))
                         results = {
                             'done'
@@ -251,7 +246,12 @@ if __name__ == '__main__':
     t = Thread(target=serve_queue)
     t.daemon = True
     t.start()    
-    run_tasks(services=app_svc.get_services())
+    # links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
+    #     operation=op, 
+    # ))
+    # print(links)
+    loop.run_forever()
+
 
 
 
