@@ -114,7 +114,9 @@ if __name__ == '__main__':
                         help="Set the logging level", default='INFO')
     parser.add_argument('--fresh', action='store_true', required=False, default=False,
                         help='remove object_store on start')
-    parser.add_argument('-P', '--plugins', required=False, default=os.listdir('plugins'),
+    plugin_options = os.listdir('plugins')
+    plugin_options = [p for p in plugin_options if p not in ('manx',)]
+    parser.add_argument('-P', '--plugins', required=False, default=plugin_options,
                         help='Start up with a single plugin', type=list_str)
     parser.add_argument('--insecure', action='store_true', required=False, default=True,
                         help='Start caldera with insecure default config values. Equivalent to "-E default".')
@@ -122,6 +124,8 @@ if __name__ == '__main__':
     parser.add_argument('-R', '--redishost', required=False, default='', help='')
     parser.add_argument('-S', '--redisport', required=False, default='', help='')
     parser.add_argument('-T', '--redispassword', required=False, default='', help='')
+    parser.add_argument('-U', '--session', required=False, default='', help='')
+    parser.add_argument('-V', '--host', required=False, default='', help='')
 
     args = parser.parse_args()
     setup_logger(getattr(logging, args.logLevel))
@@ -207,11 +211,14 @@ if __name__ == '__main__':
     # print(links)
     # print(knowledge_svc.base_service.fact_ram)
 
+    session = args.session
+    host = args.host
+
     def serve_queue():
         print('serving queue...')
         while True:
             with try_to() as errors:
-                command = db_cnn.queue_pop('/emu/red/caldera/queue')
+                command = db_cnn.queue_pop(f'/emu/{session}/{host}/caldera/queue')
                 if command:
                     timestamp, action, params = command
                     if action == 'info':
@@ -233,7 +240,7 @@ if __name__ == '__main__':
                         }
                     results['command'] = command
                     timestamp = timestamp.strftime('%Y%m%d-%H:%M:%S-%f')
-                    db_cnn.set(f'/emu/red/caldera/results/{timestamp}/', results)
+                    db_cnn.set(f'/emu/{session}/{host}/caldera/results/{timestamp}/', results)
                 sleep(1)
             if len(errors)>0:
                 print(str(errors[0]))
