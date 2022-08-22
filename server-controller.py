@@ -205,16 +205,17 @@ if __name__ == '__main__':
         adversary=adversary,
         source=sc,
     )
-    # links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
-    #     operation=op,
-    # ))
+    links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
+        operation=op,
+    ))
     # op.apply()
-    # print(links)
+    print(links)
     # print(knowledge_svc.base_service.fact_ram)
 
     session = args.session
     host = args.host
-
+    
+    loop = asyncio.new_event_loop()
     def serve_queue():
         print('serving queue...')
         while True:
@@ -223,7 +224,7 @@ if __name__ == '__main__':
                 if command:
                     timestamp, action, params = command
                     if action == 'info':
-                        links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
+                        links =  loop.run_until_complete(planning_svc.get_links(
                             operation=op,
                         ))
                         results =  todict({
@@ -232,9 +233,9 @@ if __name__ == '__main__':
                             'agents': [a.schema.dump(a) for a in op.agents],
                         })
                     elif action == 'apply':
-                        link_ids = [asyncio.get_event_loop().run_until_complete(
+                        link_ids = [loop.run_until_complete(
                             op.apply(l)) for l in params['links']]
-                        asyncio.get_event_loop().run_until_complete(
+                        loop.run_until_complete(
                             op.wait_for_links_completion(link_ids))
                         results = {
                             'done'
