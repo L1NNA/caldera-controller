@@ -3,6 +3,7 @@ import asyncio
 import logging
 import os
 import sys
+from threading import Thread
 from time import sleep
 import warnings
 
@@ -78,7 +79,7 @@ def run_tasks(services):
     loop.run_until_complete(start_server())
     try:
         logging.info('All systems ready.')
-        # loop.run_forever()
+        loop.run_forever()
     except KeyboardInterrupt:
         loop.run_until_complete(services.get('app_svc').teardown(main_config_file=args.environment))
 
@@ -163,7 +164,6 @@ if __name__ == '__main__':
         asyncio.get_event_loop().run_until_complete(data_svc.destroy())
         asyncio.get_event_loop().run_until_complete(knowledge_svc.destroy())
 
-    run_tasks(services=app_svc.get_services())
     
     # endpoints:
     # /emu/red/caldera/queue/
@@ -207,35 +207,44 @@ if __name__ == '__main__':
     # print(links)
     # print(knowledge_svc.base_service.fact_ram)
 
-    while True:
-        with try_to() as errors:
-            command = db_cnn.queue_pop('/emu/red/caldera/queue')
-            if command:
-                timestamp, action, params = command
-                if action == 'info':
-                    links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
-                        operation=op,
-                    ))
-                    results =  todict({
-                        **knowledge_svc.base_service.fact_ram,
-                        'links': links,
-                        'agents': op.agents,
-                    })
-                elif action == 'apply':
-                    link_ids = [asyncio.get_event_loop().run_until_complete(
-                        op.apply(l)) for l in params['links']]
-                    asyncio.get_event_loop().run_until_complete(
-                        op.wait_for_links_completion(link_ids))
-                    results = {
-                        'done'
-                    }
-                results['command'] = command
-                timestamp = timestamp.strftime('%Y%m%d-%H:%M:%S-%f')
-                db_cnn.set(f'/emu/red/caldera/results/{timestamp}/', results)
-            sleep(1)
-        if len(errors)>0:
-            print(str(errors[0]))
-            db_connect()
+    def serve_queue():
+        print('serving queue...')
+        while True:
+            with try_to() as errors:
+                command = db_cnn.queue_pop('/emu/red/caldera/queue')
+                if command:
+                    timestamp, action, params = command
+                    if action == 'info':
+                        links =  asyncio.get_event_loop().run_until_complete(planning_svc.get_links(
+                            operation=op,
+                        ))
+                        results =  todict({
+                            **knowledge_svc.base_service.fact_ram,
+                            'links': links,
+                            'agents': [a.schema.dump(a) for a in op.agents],
+                        })
+                    elif action == 'apply':
+                        link_ids = [asyncio.get_event_loop().run_until_complete(
+                            op.apply(l)) for l in params['links']]
+                        asyncio.get_event_loop().run_until_complete(
+                            op.wait_for_links_completion(link_ids))
+                        results = {
+                            'done'
+                        }
+                    results['command'] = command
+                    timestamp = timestamp.strftime('%Y%m%d-%H:%M:%S-%f')
+                    db_cnn.set(f'/emu/red/caldera/results/{timestamp}/', results)
+                sleep(1)
+            if len(errors)>0:
+                print(str(errors[0]))
+                db_connect()
+
+    t = Thread(target=serve_queue)
+    t.daemon = True
+    t.start()    
+    run_tasks(services=app_svc.get_services())
+
+
 
 
 
