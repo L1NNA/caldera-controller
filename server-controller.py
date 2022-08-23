@@ -218,6 +218,7 @@ if __name__ == '__main__':
                 command = db_cnn.queue_pop(f'/emu/{session}/{host}/caldera/queue')
                 if command:
                     timestamp, action, params = command
+                    logging.info(f'received command {action}')
                     if action == 'info':
                         links =  new_loop.run_until_complete(planning_svc.get_links(
                             operation=op,
