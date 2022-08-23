@@ -197,13 +197,9 @@ if __name__ == '__main__':
         atomic_ordering=[b.ability_id for b in data_svc.ram['abilities']],
     )
     sc = Source(id='3124', name='test', facts=[Fact(trait='domain.user.name', value='bob')])
-    agent = Agent(sleep_min=30, sleep_max=60, watchdog=0, platform='windows', host='WORKSTATION',
-                 username='testagent', architecture='amd64', group='red', location=r'C:\Users\Public\test.exe',
-                 pid=1234, ppid=123, executors=['psh'], privilege='User', exe_name='test.exe', contact='unknown',
-                 paw='testpaw')
     op = Operation(
         name='EMU', 
-        agents=[agent], 
+        agents=[], 
         adversary=adversary,
         source=sc,
     )
@@ -220,6 +216,7 @@ if __name__ == '__main__':
                     timestamp, action, params = command
                     logging.info(f'received command {action}')
                     if action == 'info':
+                        op.agents =  data_svc.ram['agents']
                         links =  new_loop.run_until_complete(planning_svc.get_links(
                             operation=op,
                         ))
