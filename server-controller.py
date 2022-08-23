@@ -198,10 +198,11 @@ if __name__ == '__main__':
     )
     sc = Source(id='3124', name='test', facts=[Fact(trait='domain.user.name', value='bob')])
     op = Operation(
-        name='EMU', 
+        name='EMU_OP', 
         agents=[], 
         adversary=adversary,
         source=sc,
+        group='emu'
     )
     session = args.session
     host = args.host
