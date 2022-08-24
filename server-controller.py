@@ -239,8 +239,9 @@ if __name__ == '__main__':
                     db_cnn.set(f'/emu/{session}/{host}/caldera/results/{timestamp}/', results)
                 sleep(1)
             if len(errors)>0:
-                print(str(errors[0]))
-                db_connect()
+                with try_to():
+                    sleep(2)
+                    db_connect()
 
     t = Thread(target=serve_queue)
     t.daemon = True
